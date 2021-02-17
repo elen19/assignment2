@@ -32,21 +32,15 @@ int main(int argc, char *argv[]){
   sa.ai_protocol = 17;
   int sockfd;
   int rv;
-  struct protoent *servptr;
+  calcMessage msg;
   
   if((rv=getaddrinfo(Desthost,Destport, &sa,&si)) != 0)
   {
     fprintf(stderr, "getadrrinfo: %s\n", gai_strerror(rv));
   }
-
-  int k=0;
-
+  struct sockaddr_in servaddr;
   for(p = si; p != NULL; p = p->ai_next)
   {
-  #ifdef DEBUG
-      servptr = getprotobynumber(p->ai_protocol);
-  #endif  
-      k++;
     if((sockfd = socket(p->ai_family,p->ai_socktype,p->ai_protocol)) == -1)
     {
       printf("Failed to creat socket.\n");
@@ -65,24 +59,73 @@ int main(int argc, char *argv[]){
   }
   
   ssize_t sentbytes;
-
-  rv=connect(sockfd,p->ai_addr, p->ai_addrlen);
-  printf("Connected\n");
-
-  if(sentbytes = send(sockfd,0,0,NULL) == -1)
+  msg.type = 22;
+  msg.message = 0;
+  msg.protocol = 17;
+  msg.major_version = 1;
+  msg.minor_version = 0;
+  if((sentbytes = sendto(sockfd,&msg,sizeof(msg),0,p->ai_addr,p->ai_addrlen)) == -1)
   {
-    printf("Failed to send via send function. \n");
+    printf("Failed to send via sento function. \n");
+    close (sockfd);
+    exit(0);
+  }
+
+  printf("Message sent.\n");
+  
+  socklen_t addr_len = sizeof(servaddr);
+  calcProtocol protmsg;
+  if(recvfrom(sockfd, &protmsg,sizeof(protmsg),0,(struct sockaddr*)&servaddr, &addr_len) == -1)
+  {
+    printf("Failed to recive message.\n");
     close(sockfd);
     exit(0);
   }
-  /*if(sentbytes ==-1 && (sentbytes = sendto(sockfd,0,0,NULL,p->ai_addr,p->ai_addrlen)) == -1)
+
+  if(protmsg.arith == 1)
   {
-    printf("Failed to send via sento function. \n");
-  }*/
+    protmsg.inResult = protmsg.inValue1+protmsg.inValue2;
+    printf ("Add %d %d\n Result was: %d",protmsg.inValue1, protmsg.inValue2, protmsg.inResult);
+  }
+  else if(protmsg.arith == 2)
+  {
+    protmsg.inResult = protmsg.inValue1-protmsg.inValue2;
+    printf ("Sub %d %d\n Result was: %d",protmsg.inValue1, protmsg.inValue2, protmsg.inResult);
+  }
+  else if(protmsg.arith == 3)
+  {
+      protmsg.inResult = protmsg.inValue1*protmsg.inValue2;
+      printf ("Mult %d %d\n Result was: %d",protmsg.inValue1, protmsg.inValue2, protmsg.inResult);
+  }
+  else if(protmsg.arith == 4)
+  {
+      protmsg.inResult = protmsg.inValue1/protmsg.inValue2;
+      printf ("Div %d %d\n Result was: %d",protmsg.inValue1, protmsg.inValue2, protmsg.inResult);
+  }
+  else if(protmsg.arith == 5)
+  {
+    protmsg.flResult = protmsg.flValue1 + protmsg.flValue2;
+    printf ("fAdd %lf %lf\n Result was: %lf",protmsg.flValue1, protmsg.flValue2, protmsg.flResult);
+  }  
+  else if(protmsg.arith == 6)
+  {
+    protmsg.flResult = protmsg.flValue1 - protmsg.flValue2;
+    printf ("fSub %lf %lf\n Result was: %lf",protmsg.flValue1, protmsg.flValue2, protmsg.flResult);
+  }
+    else if(protmsg.arith == 7)
+  {
+    protmsg.flResult = protmsg.flValue1 * protmsg.flValue2;
+    printf ("fMult %lf %lf\n Result was: %lf",protmsg.flValue1, protmsg.flValue2, protmsg.flResult);
+  }
+    else if(protmsg.arith == 8)
+  {
+    protmsg.flResult = protmsg.flValue1 / protmsg.flValue2;
+    printf ("fDiv %lf %lf\n Result was: %lf",protmsg.flValue1, protmsg.flValue2, protmsg.flResult);
+  }
 
-  printf("Message sent.\n");
+  printf("Arith: %d\n", protmsg.arith);
 
-
-
+  close(sockfd);
+  return 0;
 
 }
