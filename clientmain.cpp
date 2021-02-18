@@ -7,23 +7,31 @@
 #include <netdb.h>
 #include <string.h>
 #include <unistd.h>
+#include <arpa/inet.h>
 // Included to get the support library
 #include "calcLib.h"
-
+#define DEBUG
 #include "protocol.h"
 
 int main(int argc, char *argv[])
 {
 
   /* Do magic */
+  if (argc != 2)
+  {
+    printf("Wrong format.\n");
+    exit(0);
+  }
   char delim[] = ":";
   char *Desthost = strtok(argv[1], delim);
   char *Destport = strtok(NULL, delim);
+
   if (Desthost == NULL || Destport == NULL)
   {
     printf("Wrong format\n");
     exit(0);
   }
+  int port = atoi(Destport);
   addrinfo sa, *si, *p;
   memset(&sa, 0, sizeof(sa));
   sa.ai_family = AF_INET;
@@ -32,7 +40,9 @@ int main(int argc, char *argv[])
   int sockfd;
   int rv;
   calcMessage msg;
-
+  struct timeval tv;
+  tv.tv_sec = 2;
+  tv.tv_usec = 0;
   if ((rv = getaddrinfo(Desthost, Destport, &sa, &si)) != 0)
   {
     fprintf(stderr, "getadrrinfo: %s\n", gai_strerror(rv));
@@ -48,6 +58,7 @@ int main(int argc, char *argv[])
     printf("Socket created\n");
     break;
   }
+  setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, (const char *)&tv, sizeof(tv));
 
   if (p == NULL)
   {
@@ -63,22 +74,32 @@ int main(int argc, char *argv[])
   msg.protocol = htons(17);
   msg.major_version = htons(1);
   msg.minor_version = htons(0);
-  if ((sentbytes = sendto(sockfd, &msg, sizeof(msg), 0, p->ai_addr, p->ai_addrlen)) == -1)
-  {
-    printf("Failed to send via sento function. \n");
-    close(sockfd);
-    exit(0);
-  }
 
   printf("Message sent.\n");
 
   socklen_t addr_len = sizeof(servaddr);
   calcProtocol protmsg;
   calcMessage *message = new calcMessage{};
-  int bytes = recvfrom(sockfd, &protmsg, sizeof(protmsg), 0, (struct sockaddr *)&servaddr, &addr_len);
+  int bytes = -1;
+  int tries = 0;
+  while (tries < 3 && bytes < 0)
+  {
+    if ((sentbytes = sendto(sockfd, &msg, sizeof(msg), 0, p->ai_addr, p->ai_addrlen)) == -1)
+    {
+      printf("Failed to send via sento function. \n");
+      close(sockfd);
+      exit(0);
+    }
+    bytes = recvfrom(sockfd, &protmsg, sizeof(protmsg), 0, (struct sockaddr *)&servaddr, &addr_len);
+    if (bytes == -1 && tries < 2)
+    {
+      printf("Server did not respond... Trying again.\n");
+    }
+    tries++;
+  }
   if (bytes == -1)
   {
-    printf("Failed to recive message.\n");
+    printf("Failed to recive message or server did not respond. Exiting...\n");
     close(sockfd);
     exit(0);
   }
@@ -159,13 +180,30 @@ int main(int argc, char *argv[])
     protmsg.minor_version = htons(protmsg.minor_version);
     protmsg.type = htons(protmsg.type);
 
-    if ((sentbytes = sendto(sockfd, &protmsg, sizeof(protmsg), 0, p->ai_addr, p->ai_addrlen)) == -1)
+    bytes = -1;
+    tries = 0;
+    while (bytes < 0 && tries < 3)
     {
-      printf("Failed to send via sento function. \n");
+      if ((sentbytes = sendto(sockfd, &protmsg, sizeof(protmsg), 0, p->ai_addr, p->ai_addrlen)) == -1)
+      {
+        printf("Failed to send via sento function. \n");
+        close(sockfd);
+        exit(0);
+      }
+      bytes = recvfrom(sockfd, message, sizeof(*message), 0, (struct sockaddr *)&servaddr, &addr_len);
+      if (bytes == -1 && tries < 2)
+      {
+        printf("Server did not respond... Trying again.\n");
+      }
+      tries++;
+    }
+    if (bytes == -1)
+    {
+      printf("Failed to recive message or server did not respond. Exiting...\n");
       close(sockfd);
+      delete message;
       exit(0);
     }
-    bytes = recvfrom(sockfd, message, sizeof(*message), 0, (struct sockaddr *)&servaddr, &addr_len);
     message->message = ntohl(message->message);
     if (message->message == 1)
     {
@@ -180,7 +218,12 @@ int main(int argc, char *argv[])
       printf("N/A \n");
     }
   }
-
+  struct sockaddr_in local;
+  socklen_t addrlenght = sizeof(addrlenght);
+  getsockname(sockfd, (struct sockaddr *)&local, &addrlenght);
+#ifdef DEBUG
+  printf("Local address:%s Port:%d\nHost:%s Port:%d\n", (inet_ntoa)(local.sin_addr), (int)ntohs(local.sin_port), Desthost, port);
+#endif
   close(sockfd);
   delete message;
   return 0;
