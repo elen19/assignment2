@@ -71,7 +71,6 @@ int main(int argc, char *argv[])
     printf("Wrong format\n");
     exit(0);
   }
-  int port = atoi(Destport);
   addrinfo sa, *si, *p;
   memset(&sa, 0, sizeof(sa));
   sa.ai_family = AF_UNSPEC;
@@ -131,7 +130,6 @@ int main(int argc, char *argv[])
   bool messageChange = false;
   calcProtocol sendProt;
   client_len = sizeof(client);
-  char kek[123];
   initCalcLib();
   bool clientFound = false;
   int clientNr = 0;
@@ -144,12 +142,6 @@ int main(int argc, char *argv[])
     if (bytes == -1)
     {
       printf("Client did not respond... Trying again.\n");
-    }
-    else
-    {
-      inet_ntop(client.sin_family, &client.sin_addr, kek, sizeof(kek));
-      printf("%s\n", kek);
-      printf("%d\n", client.sin_port);
     }
     if (sizeof(calcMessage) == bytes)
     {
@@ -288,7 +280,7 @@ int main(int argc, char *argv[])
           }
         }
       }
-      else if(clientFound == false)
+      else if (clientFound == false)
       {
         message->message = 0;
       }
@@ -297,9 +289,10 @@ int main(int argc, char *argv[])
       {
         printf("Failed to send\n");
       }
-      else if(clientFound == true)
+      else if (clientFound == true)
       {
         clients.erase(clients.begin() + currentClient);
+        currentClient = -1;
       }
     }
     loopCount++;

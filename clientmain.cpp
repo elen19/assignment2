@@ -8,11 +8,16 @@
 #include <string.h>
 #include <unistd.h>
 #include <arpa/inet.h>
+#include <signal.h>
 // Included to get the support library
 #include "calcLib.h"
 #define DEBUG
 #include "protocol.h"
 
+void intSignal(int sig)
+{
+  exit(0);
+}
 int main(int argc, char *argv[])
 {
 
@@ -68,7 +73,7 @@ int main(int argc, char *argv[])
   }
 
   ssize_t sentbytes;
-  msg.type = htons(2);
+  msg.type = htons(22);
   msg.message = htonl(0);
   msg.protocol = htons(17);
   msg.major_version = htons(1);
@@ -81,6 +86,7 @@ int main(int argc, char *argv[])
   calcMessage *message = new calcMessage{};
   int bytes = -1;
   int tries = 0;
+  signal(SIGINT, intSignal);
   while (tries < 3 && bytes < 0)
   {
     if ((sentbytes = sendto(sockfd, &msg, sizeof(msg), 0, p->ai_addr, p->ai_addrlen)) == -1)
@@ -100,6 +106,10 @@ int main(int argc, char *argv[])
     printf("Failed to recive message or server did not respond. Exiting...\n");
     exit(0);
   }
+  else
+  {
+    sleep(3);
+  }
   if (sizeof(calcMessage) == bytes)
   {
     delete message;
@@ -117,6 +127,7 @@ int main(int argc, char *argv[])
   }
   else if(bytes == sizeof(calcProtocol))
   {
+    printf("Test\n");
     protmsg.arith = ntohl(protmsg.arith);
     protmsg.inResult = ntohl(protmsg.inResult);
     protmsg.inValue1 = ntohl(protmsg.inValue1);
