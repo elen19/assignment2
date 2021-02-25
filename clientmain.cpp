@@ -64,12 +64,11 @@ int main(int argc, char *argv[])
   {
     printf("Failed to create socket, p=NULL.\n");
     freeaddrinfo(si);
-    close(sockfd);
     exit(0);
   }
 
   ssize_t sentbytes;
-  msg.type = htons(22);
+  msg.type = htons(2);
   msg.message = htonl(0);
   msg.protocol = htons(17);
   msg.major_version = htons(1);
@@ -87,7 +86,6 @@ int main(int argc, char *argv[])
     if ((sentbytes = sendto(sockfd, &msg, sizeof(msg), 0, p->ai_addr, p->ai_addrlen)) == -1)
     {
       printf("Failed to send via sento function. \n");
-      close(sockfd);
       exit(0);
     }
     bytes = recvfrom(sockfd, &protmsg, sizeof(protmsg), 0, (struct sockaddr *)&servaddr, &addr_len);
@@ -100,7 +98,6 @@ int main(int argc, char *argv[])
   if (bytes == -1)
   {
     printf("Failed to recive message or server did not respond. Exiting...\n");
-    close(sockfd);
     exit(0);
   }
   if (sizeof(calcMessage) == bytes)
@@ -115,12 +112,10 @@ int main(int argc, char *argv[])
     if (message->type == 2 && message->message == 2 && message->major_version == 1 && message->minor_version == 0)
     {
       printf("Recived calcMessage, should be calcProtocol. Type=2, message=2, major=1, minor=0. Exiting...\n");
-      close(sockfd);
       exit(0);
     }
-    printf("LOOOL\n");
   }
-  else
+  else if(bytes == sizeof(calcProtocol))
   {
     protmsg.arith = ntohl(protmsg.arith);
     protmsg.inResult = ntohl(protmsg.inResult);
@@ -187,7 +182,6 @@ int main(int argc, char *argv[])
       if ((sentbytes = sendto(sockfd, &protmsg, sizeof(protmsg), 0, p->ai_addr, p->ai_addrlen)) == -1)
       {
         printf("Failed to send via sento function. \n");
-        close(sockfd);
         exit(0);
       }
       bytes = recvfrom(sockfd, message, sizeof(*message), 0, (struct sockaddr *)&servaddr, &addr_len);
@@ -200,23 +194,26 @@ int main(int argc, char *argv[])
     if (bytes == -1)
     {
       printf("Failed to recive message or server did not respond. Exiting...\n");
-      close(sockfd);
       delete message;
       exit(0);
     }
     message->message = ntohl(message->message);
     if (message->message == 1)
     {
-      printf("Ok!\n");
+      printf("OK\n");
     }
     else if (message->message == 0)
     {
-      printf("Not ok!");
+      printf("NOT OK\n");
     }
     else
     {
       printf("N/A \n");
     }
+  }
+  else
+  {
+    printf("I don't know what I recived.\n");
   }
   struct sockaddr_in local;
   socklen_t addrlenght = sizeof(addrlenght);
