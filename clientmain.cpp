@@ -118,16 +118,19 @@ int main(int argc, char *argv[])
     message->type = ntohs(message->type);
     message->major_version = ntohs(message->major_version);
     message->minor_version = ntohs(message->minor_version);
-
-    if (message->type == 2 && message->message == 2 && message->major_version == 1 && message->minor_version == 0)
+    if(message->message == 0)
     {
-      printf("Recived calcMessage, should be calcProtocol. Type=2, message=2, major=1, minor=0. Exiting...\n");
+      printf("Server send N/A, Exiting... \n");
+      exit(0);
+    }
+    else if(message->message == 2)
+    {
+      printf("Recived an Error/NOT OK from server, something went wrong. Exiting... \n");
       exit(0);
     }
   }
   else if(bytes == sizeof(calcProtocol))
   {
-    printf("Test\n");
     protmsg.arith = ntohl(protmsg.arith);
     protmsg.inResult = ntohl(protmsg.inResult);
     protmsg.inValue1 = ntohl(protmsg.inValue1);
@@ -213,7 +216,7 @@ int main(int argc, char *argv[])
     {
       printf("OK\n");
     }
-    else if (message->message == 0)
+    else if (message->message == 2)
     {
       printf("NOT OK\n");
     }

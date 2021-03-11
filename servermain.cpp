@@ -20,7 +20,6 @@
 
 //using namespace std;
 /* Needs to be global, to be rechable by callback and main */
-int terminate = 0;
 struct cli
 {
   struct sockaddr_in adress;
@@ -33,14 +32,13 @@ void checkJobbList(int signum)
 {
   // As anybody can call the handler, its good coding to check the signal number that called it.
   struct timeval t;
-  printf("Let me be, I want to sleep.\n");
   gettimeofday(&t, NULL);
   for (size_t i = 0; i < clients.size(); i++)
   {
     if (t.tv_sec - clients.at(i).tid.tv_sec > 10)
     {
       clients.erase(clients.begin() + i);
-      printf("Client slept...\n");
+      printf("Client does not respond, removeing it...\n");
     }
   }
   return;
@@ -127,7 +125,14 @@ int main(int argc, char *argv[])
   bool clientFound = false;
   int clientNr = 0;
   int currentClient = -1;
-  while (terminate == 0)
+  calcMessage errorMessage;
+  errorMessage.major_version = htons(1);
+  errorMessage.minor_version = htons(0);
+  errorMessage.protocol = htons(17);
+  errorMessage.type = htons(2);
+  errorMessage.message = htonl(2);
+
+  while (true)
   {
     clientFound = false;
     bytes = recvfrom(sockfd, &protmsg, sizeof(protmsg), 0, (struct sockaddr *)&client, &client_len);
@@ -135,7 +140,7 @@ int main(int argc, char *argv[])
     {
       printf("Client did not respond... Trying again.\n");
     }
-    if (sizeof(calcMessage) == bytes)
+    else if (sizeof(calcMessage) == bytes)
     {
       if (!messageChange)
       {
@@ -220,11 +225,18 @@ int main(int argc, char *argv[])
           gettimeofday(&theClient.tid, NULL);
           theClient.work = sendProt;
           clients.push_back(theClient);
+          if (sendto(sockfd, &sendProt, sizeof(sendProt), 0, (struct sockaddr *)&client, client_len) == -1)
+          {
+            printf("Failed to send\n");
+          }
         }
-      }
-      if (sendto(sockfd, &sendProt, sizeof(sendProt), 0, (struct sockaddr *)&client, client_len) == -1)
-      {
-        printf("Failed to send\n");
+        else
+        {
+          if (sendto(sockfd, &errorMessage, sizeof(errorMessage), 0, (struct sockaddr *)&client, client_len) == -1)
+          {
+            printf("Failed to send\n");
+          }
+        }
       }
     }
     else if (bytes == sizeof(calcProtocol))
