@@ -38,7 +38,7 @@ void checkJobbList(int signum)
     if (t.tv_sec - clients.at(i).tid.tv_sec > 10)
     {
       clients.erase(clients.begin() + i);
-      printf("Client does not respond, removeing it...\n");
+      printf("Client does not respond, removing it...\n");
     }
   }
   return;
